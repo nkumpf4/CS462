@@ -21,12 +21,12 @@ A first ruleset for the Quickstart
   }
   
   rule hello_monkey {
-    select when echo hello_monkey
+    select when echo monkey
 
     pre {
       name = event:attrs{"name"}.defaultsTo("Monkey")
     }
-    send_directive("Hello" + name)
+    send_directive("Hello " + name)
   }
    
 }
