@@ -19,5 +19,14 @@ A first ruleset for the Quickstart
     select when echo hello
     send_directive("say", {"something": "Hello World"})
   }
+  
+  rule hello_monkey {
+    select when echo hello_monkey
+
+    pre {
+      name = event:attrs{"name"}.defaultsTo("Monkey")
+    }
+    send_directive("Hello" + name)
+  }
    
 }

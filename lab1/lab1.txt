@@ -1,0 +1,15 @@
+1-2) No, I sent the echo hello event to my channel and got a response back, but
+when I sent it to the default channel, it said "Error: Not allowed by channel 
+policy". From what I understand this is because channels are added with certain 
+policies, and that determines which events a channel accepts. Our hello world 
+channel was created to accept any event, but the default channel was not.
+
+2-2) It returned "Error: ECI not found ckk4n0np0002pbhu84ctnfgq3". This is
+because, exactly like the error message indicates, the Event Channel Identifier
+cannot be found because it no longer exists.
+
+3) When I left the event policy completely open for the channel, it accepted the
+misspelling and simply returned a response with an empty array of directives.
+However, when the event policy was set to "echo:*" like in the events and queries
+lesson, it returned the same response as in part 1 "Not allowed by channel policy"
+
