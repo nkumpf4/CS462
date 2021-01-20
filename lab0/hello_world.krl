@@ -24,9 +24,9 @@ A first ruleset for the Quickstart
     select when echo monkey
 
     pre {
-      name = event:attrs{"name"}.defaultsTo("Monkey")
+      name = (event:attrs{"name"} || "Monkey").klog("Name used")
     }
-    send_directive("Hello " + name)
+    send_directive("say", {"something": "Hello " + name})
   }
    
 }
