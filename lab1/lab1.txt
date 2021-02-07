@@ -11,5 +11,7 @@ cannot be found because it no longer exists.
 3) When I left the event policy completely open for the channel, it accepted the
 misspelling and simply returned a response with an empty array of directives.
 However, when the event policy was set to "echo:*" like in the events and queries
-lesson, it returned the same response as in part 1 "Not allowed by channel policy"
+lesson, it returned the same response as in part 1 "Not allowed by channel policy".
+So obviously the policy should not generally be written allow all incoming events,
+but that's what will happen if it does.
 
