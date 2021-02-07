@@ -1,0 +1,9 @@
+1. IP Address: 192.168.11.2
+2. Port: 3000
+3. Pico DID: ckkujad190006o0u84acm3p3h
+4. Domain: wovyn
+5. Type: heartbeat
+
+Event URL
+
+http://192.168.11.2:3000/sky/event/ckkujad190006o0u84acm3p3h/temp/wovyn/heartbeat
