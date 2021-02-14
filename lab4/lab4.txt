@@ -1,0 +1,23 @@
+1. Picos are different from a REST api because the system isn't built to be 
+directly manipulated by HTTP calls like GET and POST. Instead, events and 
+queries are sent via those calls, and the picos themselves respond to the 
+events to determine which actions to take. In this case, new_temperature_reading
+is the event being sent to the pico, which then respond with the 
+collect_temperatures rule. Similarly, the query is made to the temperatures function
+which is being shared by the pico, which returns the entity data that has been 
+stored.
+
+2. My temperatures and violations were both stored in arrays, so I used the
+array "filter" operator in combination with the infix membership operator to
+filter the temperatures array to show all values that were not included in the
+violations array.
+
+3. If not listed in the provides section, those functions will not be available to
+other picos using this one as a module. In the context of this lab, it doesn't
+affect the functionality at all as far as I could tell, but could affect things
+in the future if we wanted to expand that functionality.
+
+4. Including the function in the shares section is more important, as it allows
+those functions to be accessed both by the testing tab in the Picos Engines UI, 
+as well as more importantly by the sky/cloud api. Without this, any API calls
+from outside sources would not be able to query our pico for these values.

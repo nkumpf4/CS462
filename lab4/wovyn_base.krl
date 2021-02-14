@@ -11,7 +11,7 @@ ruleset wovyn_base {
   }
 
   global {
-    temperature_threshold = 75
+    temperature_threshold = 80
     to_number = "+17204800523"
   }
 
