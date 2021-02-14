@@ -1,6 +1,5 @@
 ruleset com.twilio.sdk {
   meta {
-    version "0.0.0"
     name "twilio SDK"
     author "Noah Kumpf"
     description <<

@@ -1,0 +1,65 @@
+ruleset temperature_store {
+  meta {
+    name "Temperature Store"
+    description << A temperature sensor rulset >>
+    author "Noah Kumpf"
+    provides temperatures, threshold_violations, inrange_temperatures
+    shares temperatures, threshold_violations, inrange_temperatures
+  }
+
+  global {
+    temperatures = function() {
+      ent:temperatures
+    }
+    threshold_violations = function() {
+      ent:violations
+    }
+    inrange_temperatures = function() {
+      all_temperatures = temperatures();
+      all_violations = threshold_violations();
+      all_temperatures.filter(function(val){not (all_violations >< val)});
+    }
+
+  }
+
+  rule collect_temperatures {
+    select when wovyn new_temperature_reading
+    pre {
+      passed_timestamp = event:attrs{"timestamp"}.klog("Passed timestamp: ")
+      passed_temperature = event:attrs{"temperature"}.klog("Passed temperature: ")
+    }
+    send_directive("collect_temperatures", {
+      "timestamp" : passed_timestamp,
+      "temperature" : passed_temperature
+    })
+    always {
+      ent:temperatures := ent:temperatures.defaultsTo([], "initialized temperatures");
+      ent:temperatures := ent:temperatures.append({"timestamp" : passed_timestamp, "temperature" : passed_temperature})
+    }
+  }
+
+  rule collect_threshold_violations {
+    select when wovyn threshold_violation
+    pre {
+      passed_timestamp = event:attrs{"timestamp"}.klog("Passed timestamp: ")
+      passed_temperature = event:attrs{"temperature"}.klog("Passed temperature: ")
+    }
+    send_directive("collect_threshold_violations", {
+      "timestamp" : passed_timestamp,
+      "temperature" : passed_temperature
+    })
+    always {
+      ent:violations := ent:violations.defaultsTo([], "initialized violations");
+      ent:violations := ent:violations.append({"timestamp" : passed_timestamp, "temperature" : passed_temperature})
+    }
+  }
+
+  rule clear_temperatures {
+    select when senor reading_reset
+    send_directive("clear_temperatures", event:attrs)
+    always {
+      ent:temperatures := []
+      ent:violations := []
+    }
+  }
+}
