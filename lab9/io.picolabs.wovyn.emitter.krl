@@ -38,7 +38,6 @@ ruleset io.picolabs.wovyn.emitter {
     always {
       ent:heartbeat_period := event:attr("heartbeat_period")
       .klog("Heartbeat period: "); // in seconds
-
     }
   }
  
