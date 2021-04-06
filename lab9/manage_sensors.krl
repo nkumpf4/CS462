@@ -270,4 +270,15 @@ ruleset manage_sensors {
       ent:temperature_reports{[rcid, "finished_at"]} := already_finished => ent:temperature_reports{[rcid, "finished_at"]} | (ent:temperature_reports{[rcid, "temperature_sensors"]} == ent:temperature_reports{[rcid, "responding"]}) => time:now({"tz": "MST"}) | null
     }
   }
+
+  rule reset_sensor_gossip_state {
+    select when sensor reset_gossip_state
+    foreach subs:established().filter(function(x){x{"Tx_role"}=="sensor"}) setting(sensor_sub)
+      event:send(
+        {
+          "eci": sensor_sub{"Tx"},
+          "domain": "gossip", "type": "reset_state",
+        }
+      )
+  }
 }
