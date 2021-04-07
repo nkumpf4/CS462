@@ -123,19 +123,6 @@ ruleset manage_sensors {
           }
         }
       );
-      event:send(
-        {
-          "eci": sensor_eci,
-          "eid": "install_ruleset",
-          "domain": "wrangler", "type": "install_ruleset_request",
-          "attrs": {
-            "absoluteURL": meta:rulesetURI,
-            "rid": "io.picolabs.wovyn.emitter",
-            "config": {},
-            "name": sensor_name
-          }
-        }
-      );
     }
     fired {
       ent:sensors{sensor_name} := sensor
