@@ -13,7 +13,7 @@ ruleset gossip_protocol {
     default_heartbeat_period = 5
 
     default_peer_seen_states = function() {
-      subs:established().filter(function(x){x{"Tx_role"}=="node"}).reduce(function(a,b){ a.put(b{"Tx"}, {})}, {})
+      subs:established().filter(function(x){x{"Tx_role"}=="node"}).reduce(function(a,b){ a.put(b{"Tx"}, {})}, {}).defaultsTo({})
     }
 
     heartbeat_period = function() {
@@ -62,16 +62,23 @@ ruleset gossip_protocol {
 
     latest_temps = function() {
       messageIDs = seen_state().map(function(v, k){
-        k + <<:#{ent:sequence_number - 1}>>
-      }).values()
+        k + <<:#{v}>>
+      })
 
-      temp_logs()
+      temp_logs().map(function(v, k) {
+        v{messageIDs{k}}
+      })
     }
 
     getPeer = function() {
       sensor_id = subs:wellKnown_Rx(){"id"};
+
       candidates = peer_seen_states().filter(function(x){
-        x.filter(function(v,k){not(seen_state() >< k) || (seen_state() >< k && v < seen_state(){k})})
+        x != seen_state() ||
+        seen_state().keys().any(function(y){ not (x >< y) }) ||
+        x.filter(function(v, k){
+          seen_state(){k} > v
+        }).length() > 0
       })
 
       i = random:integer(candidates.length() - 1)
@@ -79,8 +86,6 @@ ruleset gossip_protocol {
     }
 
     prepareMessage = function(subscription) {
-      type = ["rumor", "rumor", "rumor", "rumor", "rumor", "rumor", "rumor", "rumor", "seen", "seen"][random:integer(9)]
-
       peer_state = peer_seen_states(){subscription{"Tx"}}
 
       rumorMessages = temp_logs().values().reduce(function(a,b){a.append(b.values())}, [])
@@ -88,6 +93,8 @@ ruleset gossip_protocol {
         not(peer_state >< x{"SensorID"}) ||
         peer_state >< x{"SensorID"} && peer_state{x{"SensorID"}} < seen_state(){x{"SensorID"}}
       })
+
+      type = rumorMessages.length() > 0 => ["rumor", "seen"][random:integer(1)] | "seen"
       
       rumorMessage = {"type": type, "msg": rumorMessages[random:integer(rumorMessages.length() - 1)]}
       seenMessage = {"type": type, "msg": seen_state()}
@@ -152,7 +159,9 @@ ruleset gossip_protocol {
       noop()
     fired {
       ent:temp_logs{[meta:picoId, msg{"MessageID"}]} := msg
-      ent:sequence_number :=  ent:sequence_number + 1 
+      ent:sequence_number :=  ent:sequence_number + 1
+    } finally {
+      ent:peer_seen_states := type == "rumor" => ent:peer_seen_states.put([sub{"Tx"}, msg{"SensorID"}], msg{"MessageID"}.split(re#:#)[1].as("Number")) | ent:peer_seen_states
     }
   }
 
@@ -174,7 +183,7 @@ ruleset gossip_protocol {
     select when gossip seen
     if ent:process == "on" then noop()
     fired {
-      ent:peer_seen_states := ent:peer_seen_states.defaultsTo(default_peer_seen_states()).put([event:attrs{"Rx"}], event:attrs{"msg"})
+      ent:peer_seen_states{event:attrs{"Rx"}} := event:attrs{"msg"}
     }
   }
     
@@ -204,6 +213,7 @@ ruleset gossip_protocol {
     always {
       ent:heartbeat_period := period if ent:heartbeat_period.isnull();
       ent:sequence_number := sequence_number
+      ent:peer_seen_states := default_peer_seen_states()
       ent:process := "on"
       schedule gossip event "heartbeat" at time:add(time:now(), {"seconds": ent:heartbeat_period})
     }
@@ -214,6 +224,7 @@ ruleset gossip_protocol {
     always {
       ent:sequence_number := 0
       ent:peer_seen_states := default_peer_seen_states()
+      ent:temp_logs := {}
     }
   }
 

@@ -123,6 +123,19 @@ ruleset manage_sensors {
           }
         }
       );
+      event:send(
+        {
+          "eci": sensor_eci,
+          "eid": "install_ruleset",
+          "domain": "wrangler", "type": "install_ruleset_request",
+          "attrs": {
+            "absoluteURL": meta:rulesetURI,
+            "rid": "gossip_protocol",
+            "config": {},
+            "name": sensor_name
+          }
+        }
+      );
     }
     fired {
       ent:sensors{sensor_name} := sensor
@@ -265,6 +278,17 @@ ruleset manage_sensors {
         {
           "eci": sensor_sub{"Tx"},
           "domain": "gossip", "type": "reset_state",
+        }
+      )
+  }
+
+  rule reset_sensor_gossip_heartbeat {
+    select when sensor reset_gossip_heartbeat
+    foreach subs:established().filter(function(x){x{"Tx_role"}=="sensor"}) setting(sensor_sub)
+      event:send(
+        {
+          "eci": sensor_sub{"Tx"},
+          "domain": "gossip", "type": "heartbeat",
         }
       )
   }

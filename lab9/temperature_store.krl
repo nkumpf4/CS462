@@ -9,7 +9,7 @@ ruleset temperature_store {
 
   global {
     temperatures = function() {
-      ent:temperatures
+      ent:temperatures.defaultsTo([])
     }
     threshold_violations = function() {
       ent:violations
