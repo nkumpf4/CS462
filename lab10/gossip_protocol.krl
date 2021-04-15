@@ -6,11 +6,11 @@ ruleset gossip_protocol {
 
     use module io.picolabs.subscription alias subs
     use module temperature_store alias store
-    shares heartbeat_period, default_peer_seen_states, temp_sequence_number, violation_sequence_number, event_schedule, temp_logs, violation_logs, seen_state, peer_seen_states, latest_temps, getPeer, prepareMessage
+    shares heartbeat_period, default_peer_seen_states, temp_sequence_number, violation_sequence_number, event_schedule, temp_logs, violation_logs, seen_state, peer_seen_states, latest_temps, violation_count, getPeer, prepareMessage
   }
 
   global {
-    default_heartbeat_period = 10
+    default_heartbeat_period = 5
 
     default_peer_seen_states = function() {
       subs:established().filter(function(x){x{"Tx_role"}=="node"}).reduce(function(a,b){ a.put(b{"Tx"}, {"temps": {}, "violations": {}})}, {}).defaultsTo({})
@@ -60,17 +60,19 @@ ruleset gossip_protocol {
       prevMsg = ent:violation_logs{[meta:picoId, prevMessageID]}
       messageID = meta:picoId + <<:#{ent:violation_sequence_number}>>
 
+      payload = (store:temperatures().length() > 0) && (store:threshold_violations() >< store:temperatures().reverse().head()) => 1 | -1
+
       msg = {
         "MessageID": messageID, 
         "SensorID": meta:picoId,
         "type": "violation",
-        "payload":  store:threshold_violations() >< store:temperatures().reverse().head() => 1 | -1,
+        "payload":  payload,
       } 
 
       store:threshold_violations().isnull() || 
-      store:threshold_violations().length() == 0 || 
+      store:threshold_violations().length() == 0 ||
       prevMsg{"payload"} == msg{"payload"}
-      => ent:violation_logs.defaultsTo({}) | 
+      => ent:violation_logs.defaultsTo({}) |
       ent:violation_logs.defaultsTo({}).put([meta:picoId, messageID], msg)
     }
 
@@ -107,6 +109,12 @@ ruleset gossip_protocol {
       temp_logs().map(function(v, k) {
         v{messageIDs{k}}
       })
+    }
+
+    violation_count = function() {
+      violation_logs().values().reduce(function(a,b){a.append(b.values())}, []).filter(function(x){
+        x{"MessageID"}.split(re#:#)[1].as("Number") <= seen_state(){["violations", x{"SensorID"}]}
+      }).reduce(function(a,b){a + b{"payload"}}, 0)
     }
 
     getPeer = function() {
@@ -193,8 +201,6 @@ ruleset gossip_protocol {
       }
     fired {
       raise gossip event "update_state" attributes {"sub": sub, "msg": msg }
-    } finally {
-      schedule gossip event "heartbeat" at time:add(time:now(), {"seconds": ent:heartbeat_period})
     }
   }
 
@@ -214,7 +220,7 @@ ruleset gossip_protocol {
       ent:temp_logs{[meta:picoId, msg{"MessageID"}]} :=  wasNewestTemp => msg | ent:temp_logs{[meta:picoId, msg{"MessageID"}]}
       ent:temp_sequence_number := wasNewestTemp => ent:temp_sequence_number + 1 | ent:temp_sequence_number
 
-      ent:violation_logs{[meta:picoId, msg{"MessageID"}]} :=  wasNewestViolation => msg | ent:violation_logs{[meta:picoId, msg{"MessageID"}]}
+      ent:violation_logs :=  wasNewestViolation => ent:violation_logs.put([meta:picoId, msg{"MessageID"}], msg) | ent:violation_logs.defaultsTo({})
       ent:violation_sequence_number := wasNewestViolation => ent:violation_sequence_number + 1 | ent:violation_sequence_number
     } finally {
       ent:peer_seen_states := type == "rumor" => ent:peer_seen_states.put([sub{"Tx"}, msg{"SensorID"}], msg{"MessageID"}.split(re#:#)[1].as("Number")) | ent:peer_seen_states
@@ -300,7 +306,7 @@ ruleset gossip_protocol {
   rule initialize_peer_seen_states {
     select when wrangler subscription_added
     pre {
-      newSubs = subs:established().filter(function(x){x{"Tx_role"}=="node"}).filter(function(x){not(seen_state(){"temps"} >< x{"Tx"}) || not(seen_state(){"violations"} >< x{"Tx"}) }).reduce(function(a,b){ a.put([b{"Tx"}, "temps"], 0).put([b{"Tx"}, "violations"], 0)}, {})
+      newSubs = subs:established().filter(function(x){x{"Tx_role"}=="node"}).filter(function(x){not(seen_state(){"temps"} >< x{"Tx"}) || not(seen_state(){"violations"} >< x{"Tx"}) }).reduce(function(a,b){ a.put([b{"Tx"}, "temps"], {}).put([b{"Tx"}, "violations"], {})}, {})
     }
     always {
       ent:peer_seen_states := ent:peer_seen_states.put(newSubs)
